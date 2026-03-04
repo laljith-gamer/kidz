@@ -1475,440 +1475,265 @@
 
 <script>
 
-// ===== Background Bubbles =====
-function createBubbles() {
-    const bg = document.getElementById('bgAnimation');
-    const colors = ['#667eea','#764ba2','#f093fb','#1dd1a1','#feca57','#ff6b6b','#54a0ff'];
-    for (let i = 0; i < 20; i++) {
-        const bubble = document.createElement('div');
-        bubble.classList.add('bubble');
-        const size = Math.random() * 200 + 50;
-        bubble.style.width = size + 'px';
-        bubble.style.height = size + 'px';
-        bubble.style.left = Math.random() * 100 + '%';
-        bubble.style.background = colors[Math.floor(Math.random() * colors.length)];
-        bubble.style.animationDuration = (Math.random() * 15 + 10) + 's';
-        bubble.style.animationDelay = (Math.random() * 10) + 's';
-        bg.appendChild(bubble);
-    }
-}
-createBubbles();
+const API_BASE="https://5oc9iuhwl5.execute-api.us-east-1.amazonaws.com/prod/summary"
 
-// ===== Date Display =====
-function updateDate() {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', options);
-}
-updateDate();
+let selectedChild="C1"
 
-// ===== Toast Notification =====
-let toastTimeout;
-function showToast(message, isError) {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.classList.remove('error');
-    if (isError) toast.classList.add('error');
-    toast.classList.add('show');
-    clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => toast.classList.remove('show'), 3500);
+let weeklyChartInstance=null
+let categoryChartInstance=null
+
+
+function showToast(msg){
+const toast=document.getElementById("toast")
+toast.innerText=msg
+toast.classList.add("show")
+setTimeout(()=>toast.classList.remove("show"),3000)
 }
 
-// ===== API Configuration =====
-const API_BASE = "https://fe50g89i15.execute-api.us-east-1.amazonaws.com/prod/dashboard";
-let selectedChild = "C101";
-let selectedChildName = "Emma";
 
-// ===== Child Selection =====
-function selectChild(el, id, name) {
-    document.querySelectorAll('.child-tab').forEach(t => t.classList.remove('active'));
-    el.classList.add('active');
-    selectedChild = id;
-    selectedChildName = name;
-    document.getElementById('errorBanner').classList.remove('show');
-    loadDashboard();
+function animateValue(el,start,end,suffix,duration){
+
+let startTime=null
+
+function step(timestamp){
+
+if(!startTime) startTime=timestamp
+
+const progress=Math.min((timestamp-startTime)/duration,1)
+
+const value=Math.floor(start+(end-start)*progress)
+
+el.innerText=value+suffix
+
+if(progress<1) requestAnimationFrame(step)
+
 }
 
-function getSelectedChildName() {
-    return selectedChildName;
+requestAnimationFrame(step)
+
 }
 
-// ===== Animate Number Counting =====
-function animateValue(element, start, end, suffix, duration) {
-    let startTime = null;
-    function step(timestamp) {
-        if (!startTime) startTime = timestamp;
-        const progress = Math.min((timestamp - startTime) / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        const current = Math.floor(start + (end - start) * eased);
-        element.textContent = current + suffix;
-        if (progress < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
+
+function animateCircle(pct){
+
+const circle=document.getElementById("progressCircle")
+
+const circumference=471
+
+const offset=circumference-(pct/100)*circumference
+
+circle.style.strokeDashoffset=offset
+
+document.getElementById("progressPct").innerText=pct+"%"
+
 }
 
-// ===== Animate Circular Progress =====
-function animateCircle(pct) {
-    const circle = document.getElementById('progressCircle');
-    const circumference = 2 * Math.PI * 75;
-    const offset = circumference - (pct / 100) * circumference;
-    circle.style.strokeDasharray = circumference;
 
-    // Change color if over 80%
-    if (pct >= 80) {
-        circle.setAttribute('stroke', 'url(#gradientWarn)');
-    } else {
-        circle.setAttribute('stroke', 'url(#gradient)');
-    }
 
-    setTimeout(() => {
-        circle.style.strokeDashoffset = offset;
-    }, 300);
-    animateValue(document.getElementById('progressPct'), 0, pct, '%', 1500);
+function updateBreakdown(gaming,videos,learning,social,total){
+
+document.getElementById("gamingMin").innerText=gaming+" min"
+document.getElementById("videosMin").innerText=videos+" min"
+document.getElementById("learningMin").innerText=learning+" min"
+document.getElementById("socialMin").innerText=social+" min"
+
+document.getElementById("gamingBar").style.width=(gaming/total*100)+"%"
+document.getElementById("videosBar").style.width=(videos/total*100)+"%"
+document.getElementById("learningBar").style.width=(learning/total*100)+"%"
+document.getElementById("socialBar").style.width=(social/total*100)+"%"
+
 }
 
-// ===== Chart Instances =====
-let weeklyChartInstance = null;
-let categoryChartInstance = null;
 
-// ===== Build Weekly Chart =====
-function buildWeeklyChart(weeklyData, dailyLimit) {
-    const weeklyCtx = document.getElementById('weeklyChart').getContext('2d');
-    if (weeklyChartInstance) weeklyChartInstance.destroy();
 
-    const weeklyGradient = weeklyCtx.createLinearGradient(0, 0, 0, 280);
-    weeklyGradient.addColorStop(0, 'rgba(102, 126, 234, 0.8)');
-    weeklyGradient.addColorStop(1, 'rgba(118, 75, 162, 0.3)');
+function buildWeeklyChart(data,limit){
 
-    const weeklyBorder = weeklyCtx.createLinearGradient(0, 0, 0, 280);
-    weeklyBorder.addColorStop(0, '#667eea');
-    weeklyBorder.addColorStop(1, '#764ba2');
+const ctx=document.getElementById("weeklyChart").getContext("2d")
 
-    const limitLine = Array(7).fill(dailyLimit);
+if(weeklyChartInstance) weeklyChartInstance.destroy()
 
-    weeklyChartInstance = new Chart(weeklyCtx, {
-        type: 'bar',
-        data: {
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            datasets: [{
-                label: 'Minutes Used',
-                data: weeklyData,
-                backgroundColor: weeklyGradient,
-                borderColor: weeklyBorder,
-                borderWidth: 2,
-                borderRadius: 10,
-                borderSkipped: false,
-            }, {
-                label: 'Daily Limit (' + dailyLimit + 'm)',
-                data: limitLine,
-                type: 'line',
-                borderColor: 'rgba(255,107,107,0.5)',
-                borderDash: [6, 4],
-                borderWidth: 2,
-                pointRadius: 0,
-                fill: false,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 1500, easing: 'easeOutQuart' },
-            plugins: {
-                legend: {
-                    labels: { color: 'rgba(255,255,255,0.7)', font: { family: 'Poppins', size: 11 }, usePointStyle: true, pointStyle: 'rectRounded' }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(15,12,41,0.9)',
-                    titleFont: { family: 'Poppins' },
-                    bodyFont: { family: 'Poppins' },
-                    padding: 12,
-                    cornerRadius: 10,
-                    callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw + ' min' }
-                }
-            },
-            scales: {
-                x: { ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Poppins', size: 11 } }, grid: { display: false } },
-                y: { ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Poppins', size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
-            }
-        }
-    });
+weeklyChartInstance=new Chart(ctx,{
+type:"bar",
+data:{
+labels:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+datasets:[{
+label:"Usage",
+data:data,
+backgroundColor:"#667eea"
+},
+{
+label:"Limit",
+data:Array(7).fill(limit),
+type:"line",
+borderColor:"#ff6b6b",
+borderDash:[5,5],
+fill:false
+}]
+}
+})
+
 }
 
-// ===== Build Category Chart =====
-function buildCategoryChart(categories) {
-    const catCtx = document.getElementById('categoryChart').getContext('2d');
-    if (categoryChartInstance) categoryChartInstance.destroy();
 
-    categoryChartInstance = new Chart(catCtx, {
-        type: 'doughnut',
-        data: {
-            labels: categories.map(c => c.name),
-            datasets: [{
-                data: categories.map(c => c.value),
-                backgroundColor: [
-                    'rgba(102,126,234,0.85)',
-                    'rgba(255,107,107,0.85)',
-                    'rgba(29,209,161,0.85)',
-                    'rgba(254,202,87,0.85)',
-                    'rgba(84,160,255,0.85)'
-                ],
-                borderColor: 'rgba(15,12,41,0.5)',
-                borderWidth: 3,
-                hoverOffset: 15,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '68%',
-            animation: { animateRotate: true, duration: 1500, easing: 'easeOutQuart' },
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: 'rgba(255,255,255,0.7)',
-                        font: { family: 'Poppins', size: 11 },
-                        usePointStyle: true,
-                        pointStyle: 'circle',
-                        padding: 16
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(15,12,41,0.9)',
-                    titleFont: { family: 'Poppins' },
-                    bodyFont: { family: 'Poppins' },
-                    padding: 12,
-                    cornerRadius: 10,
-                    callbacks: { label: ctx => ctx.label + ': ' + ctx.raw + ' min' }
-                }
-            }
-        }
-    });
+
+function buildCategoryChart(categories){
+
+const ctx=document.getElementById("categoryChart").getContext("2d")
+
+if(categoryChartInstance) categoryChartInstance.destroy()
+
+categoryChartInstance=new Chart(ctx,{
+type:"doughnut",
+data:{
+labels:["Gaming","Videos","Learning","Social"],
+datasets:[{
+data:[
+categories.gaming,
+categories.videos,
+categories.learning,
+categories.social
+],
+backgroundColor:[
+"#667eea",
+"#ff6b6b",
+"#1dd1a1",
+"#feca57"
+]
+}]
+}
+})
+
 }
 
-// ===== Update Breakdown Bars =====
-function updateBreakdown(data) {
-    const total = data.today_usage || 1;
 
-    const gaming = data.gaming || Math.round(total * 0.42);
-    const videos = data.videos || Math.round(total * 0.30);
-    const learning = data.learning || Math.round(total * 0.20);
-    const social = data.social || Math.round(total * 0.08);
 
-    document.getElementById('gamingMin').textContent = gaming + ' min';
-    document.getElementById('videosMin').textContent = videos + ' min';
-    document.getElementById('learningMin').textContent = learning + ' min';
-    document.getElementById('socialMin').textContent = social + ' min';
+async function loadDashboard(){
 
-    setTimeout(() => {
-        document.getElementById('gamingBar').style.width = Math.min((gaming / total) * 100, 100) + '%';
-        document.getElementById('videosBar').style.width = Math.min((videos / total) * 100, 100) + '%';
-        document.getElementById('learningBar').style.width = Math.min((learning / total) * 100, 100) + '%';
-        document.getElementById('socialBar').style.width = Math.min((social / total) * 100, 100) + '%';
-    }, 300);
+const overlay=document.getElementById("loadingOverlay")
+overlay.classList.add("active")
 
-    return { gaming, videos, learning, social };
+try{
+
+const res=await fetch(API_BASE+"?childId="+selectedChild)
+
+const result=await res.json()
+
+const data=result.body?JSON.parse(result.body):result
+
+const apps=data.apps||[]
+
+
+
+let total=0
+let gaming=0
+let videos=0
+let learning=0
+let social=0
+
+
+apps.forEach(a=>{
+
+total+=a.minutes
+
+const name=a.app.toLowerCase()
+
+if(name.includes("youtube"))
+videos+=a.minutes
+
+else if(name.includes("instagram")||name.includes("messenger"))
+social+=a.minutes
+
+else if(name.includes("game")||name.includes("mahjong"))
+gaming+=a.minutes
+
+else if(name.includes("pratilipi"))
+learning+=a.minutes
+
+})
+
+
+
+const dailyLimit=120
+
+const remaining=Math.max(dailyLimit-total,0)
+
+
+
+let score=100
+
+if(total>dailyLimit) score-=30
+if(gaming>60) score-=20
+if(social>60) score-=15
+if(videos>90) score-=20
+
+score=Math.max(score,20)
+
+
+
+animateValue(document.getElementById("todayUsage"),0,total,"m",1000)
+animateValue(document.getElementById("remainingTime"),0,remaining,"m",1000)
+animateValue(document.getElementById("dailyLimit"),0,dailyLimit,"m",1000)
+animateValue(document.getElementById("safetyScore"),0,score,"%",1000)
+
+document.getElementById("streak").innerText="3 days"
+
+
+
+const pct=Math.round(total/dailyLimit*100)
+
+animateCircle(Math.min(pct,100))
+
+
+
+updateBreakdown(gaming,videos,learning,social,total)
+
+
+
+buildCategoryChart({
+gaming,
+videos,
+learning,
+social
+})
+
+
+
+buildWeeklyChart([
+Math.round(total*0.6),
+Math.round(total*0.7),
+Math.round(total*0.4),
+Math.round(total*0.9),
+Math.round(total*0.3),
+Math.round(total*0.5),
+total
+],dailyLimit)
+
+
+
+document.getElementById("lastUpdated").innerText=
+"Last updated: "+new Date().toLocaleTimeString()
+
+overlay.classList.remove("active")
+
+showToast("Dashboard updated")
+
 }
 
-// ===== Update Alerts =====
-function updateAlerts(data) {
-    const pct = data.daily_limit > 0 ? Math.round((data.today_usage / data.daily_limit) * 100) : 0;
-    const limitAlert = document.getElementById('limitAlert');
-    const limitAlertDesc = document.getElementById('limitAlertDesc');
+catch(e){
 
-    if (pct >= 90) {
-        limitAlert.className = 'alert-card';
-        limitAlert.querySelector('.alert-icon').style.background = 'rgba(255,107,107,0.2)';
-        limitAlert.querySelector('.alert-icon').textContent = '🚨';
-        limitAlert.querySelector('.alert-title').textContent = 'Almost at Daily Limit!';
-        limitAlertDesc.textContent = selectedChildName + ' has used ' + pct + '% of today\'s allowed screen time';
-        limitAlert.style.display = 'flex';
-    } else if (pct >= 70) {
-        limitAlert.className = 'alert-card warn';
-        limitAlert.querySelector('.alert-icon').style.background = 'rgba(254,202,87,0.2)';
-        limitAlert.querySelector('.alert-icon').textContent = '⚠️';
-        limitAlert.querySelector('.alert-title').textContent = 'Approaching Daily Limit';
-        limitAlertDesc.textContent = selectedChildName + ' has used ' + pct + '% of today\'s allowed screen time';
-        limitAlert.style.display = 'flex';
-    } else {
-        limitAlert.style.display = 'none';
-    }
+overlay.classList.remove("active")
 
-    document.getElementById('eduAlertDesc').textContent =
-        (data.learning || Math.round(data.today_usage * 0.2)) + ' minutes of learning apps completed by ' + selectedChildName + '!';
+console.log(e)
+
+showToast("Failed to load dashboard")
+
 }
 
-// ===== Main Dashboard Loader =====
-async function loadDashboard() {
-    const btn = document.getElementById('refreshBtn');
-    const overlay = document.getElementById('loadingOverlay');
-    const errorBanner = document.getElementById('errorBanner');
-
-    btn.classList.add('loading');
-    overlay.classList.add('active');
-    errorBanner.classList.remove('show');
-
-    try {
-        const response = await fetch(`${API_BASE}?child_id=${selectedChild}`);
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        let data;
-
-// Handle both API Gateway formats safely
-        if (result.body) {
-        data = typeof result.body === "string"
-            ? JSON.parse(result.body)
-            : result.body;
-        } else {
-            data = result;
-        }
-
-        // Hide loading
-        overlay.classList.remove('active');
-
-        // Update child name
-        selectedChildName = data.child_name || selectedChildName;
-
-        // Get daily limit
-        const dailyLimit = data.daily_limit || 90;
-        const todayUsage = data.today_usage || 0;
-        const remainingTime = data.remaining_time || (dailyLimit - todayUsage);
-        const streak = data.streak || 0;
-        const safetyScore = data.safety_score || 98;
-
-        // Animate stat cards
-        animateValue(document.getElementById('todayUsage'), 0, todayUsage, 'm', 1200);
-        animateValue(document.getElementById('remainingTime'), 0, remainingTime, 'm', 1200);
-        animateValue(document.getElementById('streak'), 0, streak, ' days', 1200);
-        animateValue(document.getElementById('safetyScore'), 0, safetyScore, '%', 1200);
-        animateValue(document.getElementById('dailyLimit'), 0, dailyLimit, 'm', 1200);
-
-        // Update change indicators
-        const usagePct = dailyLimit > 0 ? Math.round((todayUsage / dailyLimit) * 100) : 0;
-        const usageChange = document.getElementById('usageChange');
-        if (usagePct >= 80) {
-            usageChange.className = 'change negative';
-            usageChange.textContent = '▲ ' + usagePct + '% of daily limit';
-        } else {
-            usageChange.className = 'change positive';
-            usageChange.textContent = usagePct + '% of daily limit';
-        }
-
-        const remainChange = document.getElementById('remainingChange');
-        if (remainingTime <= 15) {
-            remainChange.className = 'change negative';
-            remainChange.textContent = '⚠ Running low!';
-        } else {
-            remainChange.className = 'change positive';
-            remainChange.textContent = '✓ Within daily limit';
-        }
-
-        const streakChange = document.getElementById('streakChange');
-        if (streak >= 7) {
-            streakChange.className = 'change positive';
-            streakChange.textContent = '🏆 Amazing streak!';
-        } else if (streak >= 3) {
-            streakChange.className = 'change positive';
-            streakChange.textContent = '▲ Keep it up!';
-        } else {
-            streakChange.className = 'change neutral';
-            streakChange.textContent = 'Building momentum...';
-        }
-
-        document.getElementById('safetyChange').className = 'change positive';
-        document.getElementById('safetyChange').textContent = '✓ All clear';
-
-        document.getElementById('limitChange').className = 'change neutral';
-        document.getElementById('limitChange').textContent = 'Configured limit';
-
-        // Circular progress
-        const pct = dailyLimit > 0 ? Math.round((todayUsage / dailyLimit) * 100) : 0;
-        animateCircle(Math.min(pct, 100));
-
-        // Breakdown
-        const breakdown = updateBreakdown({
-            today_usage: todayUsage,
-            gaming: data.gaming,
-            videos: data.videos,
-            learning: data.learning,
-            social: data.social
-        });
-
-        // Weekly chart
-        const weeklyData = data.weekly_data || [
-            Math.round(todayUsage * 0.7),
-            Math.round(todayUsage * 0.85),
-            Math.round(todayUsage * 0.5),
-            Math.round(todayUsage * 1.0),
-            Math.round(todayUsage * 0.35),
-            Math.round(todayUsage * 0.75),
-            todayUsage
-        ];
-        buildWeeklyChart(weeklyData, dailyLimit);
-
-        // Category chart
-        const categories = data.categories || [
-            { name: 'Gaming', value: breakdown.gaming },
-            { name: 'Videos', value: breakdown.videos },
-            { name: 'Learning', value: breakdown.learning },
-            { name: 'Creative', value: Math.round(todayUsage * 0.15) },
-            { name: 'Social', value: breakdown.social }
-        ];
-        buildCategoryChart(categories);
-
-        // Alerts
-        updateAlerts({
-            today_usage: todayUsage,
-            daily_limit: dailyLimit,
-            learning: breakdown.learning
-        });
-
-        // Last updated
-        const now = new Date();
-        document.getElementById('lastUpdated').textContent =
-            'Last updated: ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-        btn.classList.remove('loading');
-        showToast('✅ Dashboard refreshed for ' + selectedChildName, false);
-
-    } catch (error) {
-        console.error("Error loading dashboard:", error);
-        overlay.classList.remove('active');
-        btn.classList.remove('loading');
-
-        // Show error banner
-        document.getElementById('errorText').textContent =
-            'Could not load data for ' + selectedChildName + '. Error: ' + error.message;
-        errorBanner.classList.add('show');
-
-        showToast('❌ Failed to load data — ' + error.message, true);
-
-        // Set default values so UI doesn't look broken
-        document.getElementById('todayUsage').textContent = '--';
-        document.getElementById('remainingTime').textContent = '--';
-        document.getElementById('streak').textContent = '--';
-        document.getElementById('safetyScore').textContent = '--';
-        document.getElementById('dailyLimit').textContent = '--';
-
-        document.getElementById('usageChange').className = 'change neutral';
-        document.getElementById('usageChange').textContent = 'Unable to fetch';
-        document.getElementById('remainingChange').className = 'change neutral';
-        document.getElementById('remainingChange').textContent = 'Unable to fetch';
-        document.getElementById('streakChange').className = 'change neutral';
-        document.getElementById('streakChange').textContent = 'Unable to fetch';
-        document.getElementById('safetyChange').className = 'change neutral';
-        document.getElementById('safetyChange').textContent = 'Unable to fetch';
-        document.getElementById('limitChange').className = 'change neutral';
-        document.getElementById('limitChange').textContent = 'Unable to fetch';
-    }
 }
 
-// ===== Initial Load =====
-loadDashboard();
+
+
+loadDashboard()
 
 </script>
 
