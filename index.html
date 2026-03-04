@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 
 <meta charset="UTF-8">
-<title>Kids Screen Usage Dashboard</title>
+<title>Screen Usage Dashboard</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -17,10 +18,10 @@ padding:40px;
 }
 
 h1{
-margin-bottom:20px;
+margin-bottom:30px;
 }
 
-.container{
+.grid{
 display:grid;
 grid-template-columns:1fr 1fr;
 gap:20px;
@@ -29,31 +30,39 @@ gap:20px;
 .card{
 background:#1e293b;
 padding:20px;
-border-radius:10px;
+border-radius:12px;
 }
 
 .stat{
-font-size:30px;
+font-size:28px;
 font-weight:bold;
+margin-top:10px;
 }
 
-.good{color:#22c55e}
-.warn{color:#f59e0b}
-.bad{color:#ef4444}
+canvas{
+background:#020617;
+padding:10px;
+border-radius:8px;
+}
 
 button{
 padding:10px 20px;
 background:#6366f1;
 border:none;
-color:white;
 border-radius:6px;
+color:white;
 cursor:pointer;
+margin-bottom:20px;
 }
 
-canvas{
-background:#111827;
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+td{
 padding:10px;
-border-radius:8px;
+border-bottom:1px solid #374151;
 }
 
 </style>
@@ -62,13 +71,11 @@ border-radius:8px;
 
 <body>
 
-<h1>📱 Kids Screen Monitoring Dashboard</h1>
+<h1>📱 Screen Usage Dashboard</h1>
 
 <button onclick="loadData()">Refresh</button>
 
-<br><br>
-
-<div class="container">
+<div class="grid">
 
 <div class="card">
 <h3>Today's Screen Time</h3>
@@ -87,14 +94,14 @@ border-radius:8px;
 
 <div class="card">
 <h3>Daily Limit</h3>
-<div id="dailyLimit" class="stat">120 min</div>
+<div class="stat">120 min</div>
 </div>
 
 </div>
 
 <br>
 
-<div class="container">
+<div class="grid">
 
 <div class="card">
 <h3>Weekly Usage</h3>
@@ -111,113 +118,111 @@ border-radius:8px;
 <br>
 
 <div class="card">
+
 <h3>Top Apps Used</h3>
-<table width="100%" id="appTable"></table>
+
+<table id="appsTable"></table>
+
 </div>
 
-<script>
 
+<script>
 
 const API_URL="https://5oc9iuhwl5.execute-api.us-east-1.amazonaws.com/prod/summary?childId=C1"
 
 let weeklyChart
 let categoryChart
 
+
 async function loadData(){
 
-const res=await fetch(API_URL)
+try{
 
-const result=await res.json()
+const res = await fetch(API_URL)
 
-const data=result.body?JSON.parse(result.body):result
+if(!res.ok){
+throw new Error("API request failed")
+}
 
-const apps=data.apps || []
+const result = await res.json()
 
-let total=0
+const data = result.body ? JSON.parse(result.body) : result
 
-let gaming=0
-let social=0
-let video=0
-let learning=0
+const apps = data.apps || []
 
 
-apps.forEach(a=>{
+let total = 0
 
-total+=a.minutes
+let gaming = 0
+let video = 0
+let social = 0
+let learning = 0
 
-const name=a.app.toLowerCase()
+
+apps.forEach(app=>{
+
+total += app.minutes
+
+const name = app.app.toLowerCase()
 
 if(name.includes("youtube"))
-video+=a.minutes
+video += app.minutes
 
-else if(name.includes("instagram") || name.includes("messenger"))
-social+=a.minutes
+else if(name.includes("instagram"))
+social += app.minutes
 
 else if(name.includes("game") || name.includes("mahjong"))
-gaming+=a.minutes
+gaming += app.minutes
 
 else
-learning+=a.minutes
+learning += app.minutes
 
 })
 
 
-const dailyLimit=120
+const dailyLimit = 120
 
-const remaining=Math.max(dailyLimit-total,0)
+const remaining = Math.max(dailyLimit-total,0)
 
 
+// simple safety score
 
-// ---------- ML SCORE ----------
-
-let score=100
+let score = 100
 
 if(total>dailyLimit) score-=30
-
 if(social>60) score-=20
-
+if(gaming>60) score-=20
 if(video>90) score-=15
 
-if(gaming>60) score-=15
-
-score=Math.max(score,10)
+score = Math.max(score,10)
 
 
-// ---------- UI ----------
+// update UI
 
-document.getElementById("todayUsage").innerHTML=total+" min"
-
-document.getElementById("remainingTime").innerHTML=remaining+" min"
-
-
-const scoreEl=document.getElementById("safetyScore")
-
-scoreEl.innerHTML=score+"%"
-
-if(score>80) scoreEl.className="stat good"
-else if(score>50) scoreEl.className="stat warn"
-else scoreEl.className="stat bad"
+document.getElementById("todayUsage").innerText = total+" min"
+document.getElementById("remainingTime").innerText = remaining+" min"
+document.getElementById("safetyScore").innerText = score+" %"
 
 
 
-// ---------- WEEKLY GRAPH ----------
+// weekly data
 
 const weekly=[
 Math.round(total*0.6),
-Math.round(total*0.8),
-Math.round(total*0.5),
-Math.round(total*0.9),
-Math.round(total*0.4),
 Math.round(total*0.7),
+Math.round(total*0.5),
+Math.round(total*0.8),
+Math.round(total*0.4),
+Math.round(total*0.6),
 total
 ]
 
 
-const ctx=document.getElementById("weeklyChart")
-
 if(weeklyChart) weeklyChart.destroy()
 
-weeklyChart=new Chart(ctx,{
+weeklyChart = new Chart(
+document.getElementById("weeklyChart"),
+{
 type:"bar",
 data:{
 labels:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
@@ -227,17 +232,18 @@ data:weekly,
 backgroundColor:"#6366f1"
 }]
 }
-})
+}
+)
 
 
 
-// ---------- CATEGORY GRAPH ----------
-
-const ctx2=document.getElementById("categoryChart")
+// category chart
 
 if(categoryChart) categoryChart.destroy()
 
-categoryChart=new Chart(ctx2,{
+categoryChart = new Chart(
+document.getElementById("categoryChart"),
+{
 type:"doughnut",
 data:{
 labels:["Gaming","Video","Social","Learning"],
@@ -251,26 +257,35 @@ backgroundColor:[
 ]
 }]
 }
-})
+}
+)
 
 
+// app table
 
-// ---------- APP TABLE ----------
-
-const table=document.getElementById("appTable")
+const table = document.getElementById("appsTable")
 
 table.innerHTML=""
 
-apps.forEach(a=>{
+apps.forEach(app=>{
 
-table.innerHTML+=`
+table.innerHTML += `
 <tr>
-<td>${a.app}</td>
-<td>${a.minutes} min</td>
+<td>${app.app}</td>
+<td>${app.minutes} min</td>
 </tr>
 `
 
 })
+
+
+}catch(err){
+
+console.error(err)
+
+alert("Failed to fetch data from API")
+
+}
 
 }
 
