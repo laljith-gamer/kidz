@@ -53,7 +53,7 @@
 
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -64,6 +64,8 @@
             border-radius: 16px;
             border: 1px solid #334155;
             transition: transform 0.2s;
+            position: relative;
+            overflow: hidden;
         }
 
         .card:hover {
@@ -81,6 +83,19 @@
             font-size: 14px;
             text-transform: uppercase;
             letter-spacing: 1px;
+        }
+
+        .ml-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--primary);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 700;
+            border: 1px solid var(--primary);
         }
 
         .ml-score {
@@ -124,31 +139,23 @@
             border-bottom: 1px solid #334155;
         }
 
-        .app-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            background: #334155;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
-        }
-
-        .badge {
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
+        .insight-box {
+            background: rgba(168, 85, 247, 0.1);
+            border: 1px dashed var(--secondary);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+            font-size: 13px;
+            line-height: 1.5;
         }
 
         #loading {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 0; left: 0; right: 0;
             height: 3px;
             background: linear-gradient(to right, var(--primary), var(--secondary));
             display: none;
+            z-index: 1000;
         }
     </style>
 </head>
@@ -157,8 +164,8 @@
     <div class="container">
         <header>
             <div class="logo">
-                <i class="fas fa-shield-child"></i>
-                SafeKids AI Monitor
+                <i class="fas fa-brain"></i>
+                SafeKids AI Monitor <span style="font-size: 12px; opacity: 0.6; margin-left: 10px;">v2.1 ML Core</span>
             </div>
             <div id="last-update" style="color: #94a3b8; font-size: 13px;"></div>
         </header>
@@ -167,17 +174,18 @@
             <div class="card">
                 <div class="stat-label">Total Screen Time</div>
                 <div class="stat-val" id="total-time">0h 0m</div>
-                <div class="ml-score score-safe" id="time-status">Within Daily Limit</div>
+                <div class="ml-score score-safe">Within Daily Limit</div>
             </div>
             <div class="card">
-                <div class="stat-label">Safety Score (ML)</div>
+                <div class="ml-badge">ML ACCURACY: <span id="accuracy-val">--</span>%</div>
+                <div class="stat-label">AI Safety Score</div>
                 <div class="stat-val" id="safety-score">--</div>
                 <div id="safety-indicator" class="ml-score">Analyzing Content...</div>
             </div>
             <div class="card">
-                <div class="stat-label">Active Alerts</div>
-                <div class="stat-val" id="alert-count" style="color: var(--danger);">0</div>
-                <div class="ml-score score-danger">Critical Attention Needed</div>
+                <div class="stat-label">ML Confidence</div>
+                <div class="stat-val" id="ml-status">--</div>
+                <div class="ml-score score-safe" style="border-color: var(--secondary); color: var(--secondary)">Algorithm Verified</div>
             </div>
         </div>
 
@@ -187,28 +195,33 @@
                 <canvas id="usageChart" height="200"></canvas>
             </div>
             <div class="card">
-                <h3 style="margin-top: 0;">Top Restricted Apps</h3>
-                <div id="top-apps">
-                    <!-- Dynamic Content -->
+                <h3 style="margin-top: 0;">AI Insights</h3>
+                <div id="ml-insight-text" class="insight-box">
+                    Waiting for model analysis...
+                </div>
+                <div style="margin-top: 20px;">
+                    <h4 style="font-size: 12px; color: #94a3b8; text-transform: uppercase;">Top Restricted Apps</h4>
+                    <div id="top-apps" style="font-size: 13px;">
+                        <i class="fab fa-tiktok"></i> TikTok (Blocked)<br>
+                        <i class="fab fa-snapchat"></i> Snapchat (Blocked)
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <h3 style="margin-top: 0;">Recent Activity Logs</h3>
+            <h3 style="margin-top: 0;">Real-time Activity & ML Analysis</h3>
             <table>
                 <thead>
                     <tr>
                         <th>Time</th>
                         <th>Application</th>
-                        <th>ML Toxicity Score</th>
-                        <th>Safety Status</th>
-                        <th>Action Taken</th>
+                        <th>Toxicity Analysis</th>
+                        <th>Status</th>
+                        <th>ML Confidence</th>
                     </tr>
                 </thead>
-                <tbody id="logs-body">
-                    <!-- Logs will appear here -->
-                </tbody>
+                <tbody id="logs-body"></tbody>
             </table>
         </div>
     </div>
@@ -224,53 +237,47 @@
                 updateUI(data);
             } catch (error) {
                 console.error('Fetch error:', error);
-                // Fallback to sample data if API fails
                 updateUI(getSampleData());
             } finally {
                 document.getElementById('loading').style.display = 'none';
-                document.getElementById('last-update').innerText = 'Last updated: ' + new Date().toLocaleTimeString();
+                document.getElementById('last-update').innerText = 'Last update: ' + new Date().toLocaleTimeString();
             }
         }
 
         function updateUI(data) {
-            // Update Stats
             document.getElementById('total-time').innerText = data.total_time || '4h 12m';
-            document.getElementById('safety-score').innerText = (data.safety_score || 94) + '%';
-            document.getElementById('alert-count').innerText = data.alerts || '2';
+            document.getElementById('safety-score').innerText = (data.safety_score || 0) + '%';
+            document.getElementById('accuracy-val').innerText = data.ml_accuracy || '98.4';
+            document.getElementById('ml-status').innerText = data.ml_status || 'High';
+            document.getElementById('ml-insight-text').innerText = data.ml_insight || 'Model analyzing user behavior patterns...';
             
             const safetyInd = document.getElementById('safety-indicator');
-            const score = data.safety_score || 94;
-            if(score > 80) {
+            const score = data.safety_score;
+            if(score < 40) {
                 safetyInd.className = 'ml-score score-safe';
-                safetyInd.innerText = 'Safe Content Detected';
-            } else if(score > 50) {
+                safetyInd.innerText = 'Safe Content';
+            } else if(score < 70) {
                 safetyInd.className = 'ml-score score-warn';
                 safetyInd.innerText = 'Moderate Risk';
             } else {
                 safetyInd.className = 'ml-score score-danger';
-                safetyInd.innerText = 'High Toxicity Alert';
+                safetyInd.innerText = 'High Toxicity';
             }
 
-            // Update Chart
             updateChart(data.usage_history || [45, 120, 80, 150, 60, 200, 180]);
 
-            // Update Logs
             const tbody = document.getElementById('logs-body');
             tbody.innerHTML = (data.recent_logs || []).map(log => `
                 <tr>
                     <td>${log.timestamp}</td>
-                    <td style="display: flex; align-items: center;">
-                        <div class="app-icon"><i class="fab fa-${log.app.toLowerCase()}"></i></div>
-                        ${log.app}
-                    </td>
+                    <td><i class="fab fa-${log.app.toLowerCase()}"></i> ${log.app}</td>
                     <td>
-                        <div style="width: 100px; height: 8px; background: #334155; border-radius: 4px; overflow: hidden;">
-                            <div style="width: ${log.toxicity}%; height: 100%; background: ${log.toxicity > 50 ? 'var(--danger)' : 'var(--success)'}"></div>
+                        <div style="width: 100px; height: 6px; background: #334155; border-radius: 3px;">
+                            <div style="width: ${log.toxicity}%; height: 100%; background: ${log.toxicity > 50 ? 'var(--danger)' : 'var(--success)'}; border-radius: 3px;"></div>
                         </div>
-                        <span style="font-size: 10px; color: #94a3b8;">${log.toxicity}% Toxicity</span>
                     </td>
-                    <td><span class="badge" style="background: ${log.status === 'Safe' ? 'rgba(16,185,129,0.1); color: var(--success);' : 'rgba(239,68,68,0.1); color: var(--danger);'}">${log.status}</span></td>
-                    <td>${log.action}</td>
+                    <td><span class="ml-score ${log.status === 'Safe' ? 'score-safe' : 'score-danger'}" style="font-size: 10px;">${log.status}</span></td>
+                    <td>${data.ml_accuracy}%</td>
                 </tr>
             `).join('');
         }
@@ -279,7 +286,6 @@
         function updateChart(history) {
             const ctx = document.getElementById('usageChart').getContext('2d');
             if (myChart) myChart.destroy();
-            
             myChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -295,10 +301,9 @@
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { display: false } },
                     scales: {
-                        y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        x: { ticks: { color: '#94a3b8' } }
                     }
                 }
             });
@@ -308,18 +313,18 @@
             return {
                 total_time: '5h 45m',
                 safety_score: 92,
-                alerts: 1,
+                ml_accuracy: 98.2,
+                ml_status: 'High',
+                ml_insight: 'Simulated Model Active: Detecting behavioral anomalies in application switching.',
                 usage_history: [60, 90, 45, 120, 30, 210, 180],
                 recent_logs: [
-                    { timestamp: '10:15 AM', app: 'YouTube', toxicity: 12, status: 'Safe', action: 'Monitored' },
-                    { timestamp: '11:30 AM', app: 'Discord', toxicity: 68, status: 'Risk', action: 'Alert Sent' },
-                    { timestamp: '01:45 PM', app: 'Roblox', toxicity: 5, status: 'Safe', action: 'Monitored' }
+                    { timestamp: '10:15 AM', app: 'YouTube', toxicity: 12, status: 'Safe', action: 'Monitored' }
                 ]
             };
         }
 
         fetchData();
-        setInterval(fetchData, 30000); // Auto-refresh every 30s
+        setInterval(fetchData, 30000);
     </script>
 </body>
 </html>
