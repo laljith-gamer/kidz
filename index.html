@@ -166,7 +166,9 @@
             try {
                 // In production, this would fetch from DynamoDB via API Gateway
                 // For now, simulating real-time Kinesis stream updates
-                const data = await getSampleData(); 
+                            // Fetch real data from DynamoDB via API Gateway
+            const response = await fetch(API_ENDPOINT.replace('/events', '/data'));
+            const data = await response.json();
                 updateDashboard(data);
             } catch (err) {
                 console.error('Fetch error:', err);
@@ -223,22 +225,7 @@
             });
         }
 
-        function getSampleData() {
-            // Simulated real-time data reflecting production Lambda logic
-            return {
-                total_time: '4h 12m',
-                safety_score: 96,
-                streak: 5,
-                ml_status: 'Safe',
-                usage_history: [120, 150, 90, 210, 180, 240, 252],
-                recent_logs: [
-                    { timestamp: 'Just now', app: 'Education App', status: 'Safe' },
-                    { timestamp: '15m ago', app: 'YouTube Kids', status: 'Safe' },
-                    { timestamp: '1h ago', app: 'Roblox', status: 'Warning' }
-                ]
-            };
-        }
-
+        
         fetchData();
         setInterval(fetchData, 5000);
     </script>
