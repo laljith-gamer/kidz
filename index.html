@@ -159,7 +159,7 @@ display:none;
 const API_URL =
 "https://ozct5tcexuytwcxr7g34yb75ru0juafl.lambda-url.us-east-1.on.aws/";
 
-let chart;
+let chart
 
 async function loadData(){
 
@@ -168,33 +168,33 @@ const res = await fetch(API_URL)
 const data = await res.json()
 
 document.getElementById("usage").innerText =
-data.totalUsageMinutes+" min"
+(data.totalUsageMinutes || 0) + " min"
 
 document.getElementById("apps").innerText =
-data.appsUsed
+data.appsUsed || 0
 
 document.getElementById("topApp").innerText =
-data.topApp.split(".").pop()
+(data.topApp || "").split(".").pop()
 
 document.getElementById("risk").innerText =
-data.risk_level
+data.risk_level || "LOW"
 
 document.getElementById("riskScore").innerText =
-Math.round(data.risk_score*100)+"%"
+((data.risk_score || 0) * 100).toFixed(0) + "%"
 
 document.getElementById("riskReason").innerText =
-data.risk_reason
+data.risk_reason || "No risk detected"
 
 document.getElementById("prediction").innerText =
-data.prediction
+data.prediction || "AI prediction not available yet"
 
 if(data.risk_level === "HIGH"){
 document.getElementById("alertBox").style.display="block"
 }
 
-renderLogs(data.recentApps)
+renderLogs(data.recentApps || [])
 
-renderChart(data.recentApps)
+renderChart(data.recentApps || [])
 
 }
 
