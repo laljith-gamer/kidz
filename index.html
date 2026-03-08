@@ -1,22 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>SafeKids AI Monitoring Dashboard</title>
+<title>SafeKids AI Monitor</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 
 body{
-font-family:Arial,Helvetica,sans-serif;
+font-family:Arial;
 background:#0f172a;
 color:white;
-margin:0;
 padding:20px;
 }
 
@@ -26,9 +24,6 @@ margin:auto;
 }
 
 header{
-display:flex;
-justify-content:space-between;
-align-items:center;
 background:#1e293b;
 padding:20px;
 border-radius:10px;
@@ -51,7 +46,6 @@ border-radius:10px;
 .value{
 font-size:28px;
 font-weight:bold;
-margin-top:10px;
 color:#6366f1;
 }
 
@@ -65,12 +59,7 @@ margin-top:20px;
 .log{
 padding:10px;
 border-bottom:1px solid #334155;
-font-size:14px;
 }
-
-.low{color:#10b981;}
-.medium{color:#f59e0b;}
-.high{color:#ef4444;}
 
 </style>
 
@@ -81,14 +70,8 @@ font-size:14px;
 <div class="container">
 
 <header>
-
-<div>
 <h2>🛡 SafeKids AI Monitor</h2>
-<p style="color:#94a3b8">AI Behavior Monitoring</p>
-</div>
-
-<div id="status">LIVE</div>
-
+<p>AI Behavior Monitoring</p>
 </header>
 
 
@@ -114,33 +97,27 @@ font-size:14px;
 <div class="value" id="risk">LOW</div>
 </div>
 
+<div class="card">
+<div>AI Risk Score</div>
+<div class="value" id="riskScore">0%</div>
+</div>
+
 </div>
 
 
 <div class="card">
-
 <div>Risk Reason</div>
-
-<div id="riskReason" style="margin-top:10px;color:#94a3b8">
-
-No risk detected
-
-</div>
-
+<div id="riskReason">No risk detected</div>
 </div>
 
 
-<canvas id="chart" style="margin-top:30px"></canvas>
+<canvas id="chart"></canvas>
 
 
 <div class="logs">
-
-<h3>Recent App Activity</h3>
-
+<h3>Recent Apps</h3>
 <div id="logList">Loading...</div>
-
 </div>
-
 
 </div>
 
@@ -152,10 +129,7 @@ const API_URL =
 
 let chart;
 
-
 async function loadData(){
-
-try{
 
 const res = await fetch(API_URL);
 
@@ -168,27 +142,22 @@ document.getElementById("apps").innerText =
 data.appsUsed;
 
 document.getElementById("topApp").innerText =
-data.topApp;
+data.topApp.split(".").pop();
 
 document.getElementById("risk").innerText =
 data.risk_level;
 
+document.getElementById("riskScore").innerText =
+Math.round(data.risk_score*100)+"%";
+
 document.getElementById("riskReason").innerText =
 data.risk_reason;
-
 
 renderLogs(data.recentApps);
 
 renderChart(data.recentApps);
 
-}catch(err){
-
-console.error(err);
-
 }
-
-}
-
 
 
 function renderLogs(apps){
@@ -196,20 +165,11 @@ function renderLogs(apps){
 const container =
 document.getElementById("logList");
 
-if(!apps || apps.length===0){
-
-container.innerHTML="No activity yet";
-
-return;
-
-}
-
-container.innerHTML =
-apps.map(a=>`
+container.innerHTML = apps.map(a=>`
 
 <div class="log">
 
-<b>${a.app}</b>
+${a.app}
 
 <span style="float:right">
 
@@ -222,7 +182,6 @@ ${a.usageMinutes} min
 `).join("");
 
 }
-
 
 
 function renderChart(apps){
@@ -239,29 +198,17 @@ apps.map(a=>a.usageMinutes);
 if(chart) chart.destroy();
 
 chart = new Chart(ctx,{
-
 type:"bar",
-
 data:{
-
 labels:labels,
-
 datasets:[{
-
 label:"Usage Minutes",
-
-data:values,
-
-backgroundColor:"#6366f1"
-
+data:values
 }]
-
 }
-
 });
 
 }
-
 
 
 loadData();
@@ -271,5 +218,4 @@ setInterval(loadData,5000);
 </script>
 
 </body>
-
 </html>
