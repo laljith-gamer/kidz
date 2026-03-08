@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 
 <meta charset="UTF-8">
@@ -61,6 +62,14 @@ padding:10px;
 border-bottom:1px solid #334155;
 }
 
+.alert{
+background:#ef4444;
+padding:15px;
+border-radius:10px;
+margin-bottom:20px;
+display:none;
+}
+
 </style>
 
 </head>
@@ -70,9 +79,16 @@ border-bottom:1px solid #334155;
 <div class="container">
 
 <header>
+
 <h2>🛡 SafeKids AI Monitor</h2>
 <p>AI Behavior Monitoring</p>
+
 </header>
+
+
+<div id="alertBox" class="alert">
+⚠ High Risk Behavior Detected
+</div>
 
 
 <div class="cards">
@@ -106,8 +122,20 @@ border-bottom:1px solid #334155;
 
 
 <div class="card">
+
 <div>Risk Reason</div>
+
 <div id="riskReason">No risk detected</div>
+
+</div>
+
+
+<div class="card">
+
+<div>AI Behavior Prediction</div>
+
+<div id="prediction">Loading...</div>
+
 </div>
 
 
@@ -115,9 +143,13 @@ border-bottom:1px solid #334155;
 
 
 <div class="logs">
+
 <h3>Recent Apps</h3>
+
 <div id="logList">Loading...</div>
+
 </div>
+
 
 </div>
 
@@ -131,39 +163,45 @@ let chart;
 
 async function loadData(){
 
-const res = await fetch(API_URL);
+const res = await fetch(API_URL)
 
-const data = await res.json();
+const data = await res.json()
 
 document.getElementById("usage").innerText =
-data.totalUsageMinutes+" min";
+data.totalUsageMinutes+" min"
 
 document.getElementById("apps").innerText =
-data.appsUsed;
+data.appsUsed
 
 document.getElementById("topApp").innerText =
-data.topApp.split(".").pop();
+data.topApp.split(".").pop()
 
 document.getElementById("risk").innerText =
-data.risk_level;
+data.risk_level
 
 document.getElementById("riskScore").innerText =
-Math.round(data.risk_score*100)+"%";
+Math.round(data.risk_score*100)+"%"
 
 document.getElementById("riskReason").innerText =
-data.risk_reason;
+data.risk_reason
 
-renderLogs(data.recentApps);
+document.getElementById("prediction").innerText =
+data.prediction
 
-renderChart(data.recentApps);
+if(data.risk_level === "HIGH"){
+document.getElementById("alertBox").style.display="block"
+}
+
+renderLogs(data.recentApps)
+
+renderChart(data.recentApps)
 
 }
 
 
 function renderLogs(apps){
 
-const container =
-document.getElementById("logList");
+const container = document.getElementById("logList")
 
 container.innerHTML = apps.map(a=>`
 
@@ -179,23 +217,20 @@ ${a.usageMinutes} min
 
 </div>
 
-`).join("");
+`).join("")
 
 }
 
 
 function renderChart(apps){
 
-const ctx =
-document.getElementById("chart");
+const ctx = document.getElementById("chart")
 
-const labels =
-apps.map(a=>a.app.split(".").pop());
+const labels = apps.map(a=>a.app.split(".").pop())
 
-const values =
-apps.map(a=>a.usageMinutes);
+const values = apps.map(a=>a.usageMinutes)
 
-if(chart) chart.destroy();
+if(chart) chart.destroy()
 
 chart = new Chart(ctx,{
 type:"bar",
@@ -206,16 +241,16 @@ label:"Usage Minutes",
 data:values
 }]
 }
-});
+})
 
 }
 
+loadData()
 
-loadData();
-
-setInterval(loadData,5000);
+setInterval(loadData,5000)
 
 </script>
 
 </body>
+
 </html>
