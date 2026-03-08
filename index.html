@@ -1,15 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SafeKids AI Monitoring Dashboard</title>
+
+<title>SafeKids Usage Dashboard</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+
 body{
-font-family:Arial,Helvetica,sans-serif;
+font-family:Arial;
 background:#0f172a;
 color:white;
 margin:0;
@@ -24,7 +27,6 @@ margin:auto;
 header{
 display:flex;
 justify-content:space-between;
-align-items:center;
 background:#1e293b;
 padding:20px;
 border-radius:10px;
@@ -45,7 +47,7 @@ border-radius:10px;
 }
 
 .value{
-font-size:28px;
+font-size:30px;
 font-weight:bold;
 margin-top:10px;
 color:#6366f1;
@@ -64,11 +66,8 @@ border-bottom:1px solid #334155;
 font-size:14px;
 }
 
-.safe{color:#10b981;}
-.warning{color:#f59e0b;}
-.danger{color:#ef4444;}
-
 </style>
+
 </head>
 
 <body>
@@ -77,28 +76,30 @@ font-size:14px;
 
 <header>
 <div>
-<h2>🛡 SafeKids AI Monitor</h2>
-<p style="color:#94a3b8">Real-time AI Safety Monitoring</p>
+<h2>📱 SafeKids Monitoring Dashboard</h2>
+<p style="color:#94a3b8">Child Device Usage Analytics</p>
 </div>
 
 <div id="status">LIVE</div>
+
 </header>
+
 
 <div class="cards">
 
 <div class="card">
-<div>Total Events</div>
-<div class="value" id="events">0</div>
+<div>Total Screen Time</div>
+<div class="value" id="usage">0</div>
 </div>
 
 <div class="card">
-<div>Safety Score</div>
-<div class="value" id="safety">--</div>
+<div>Apps Used</div>
+<div class="value" id="apps">0</div>
 </div>
 
 <div class="card">
-<div>Alerts</div>
-<div class="value" id="alerts">0</div>
+<div>Most Used App</div>
+<div class="value" id="topApp">--</div>
 </div>
 
 <div class="card">
@@ -111,16 +112,22 @@ font-size:14px;
 <canvas id="chart"></canvas>
 
 <div class="logs">
-<h3>AI Security Logs</h3>
-<div id="logList">Loading...</div>
+
+<h3>Recent Apps Used</h3>
+
+<div id="logList">
+Loading...
 </div>
 
 </div>
+
+</div>
+
 
 <script>
 
 const API_URL =
-"https://ozct5tcexuytwcxr7g34yb75ru0juafl.lambda-url.us-east-1.on.aws/";
+"https://k622bjk7eapxttgsaygks2qfxu0kccuw.lambda-url.us-east-1.on.aws/";
 
 let chart;
 
@@ -131,80 +138,93 @@ try{
 const res = await fetch(API_URL);
 const data = await res.json();
 
-document.getElementById("events").innerText =
-data.total_events;
+document.getElementById("usage").innerText =
+data.totalUsageMinutes+" min";
 
-document.getElementById("alerts").innerText =
-data.alerts;
+document.getElementById("apps").innerText =
+data.appsUsed;
+
+document.getElementById("topApp").innerText =
+data.topApp;
 
 document.getElementById("updated").innerText =
 new Date(data.lastUpdated).toLocaleTimeString();
 
-document.getElementById("safety").innerText =
-Math.round(data.safety_score)+"%";
-
-renderLogs(data.recent_logs);
-renderChart(data.recent_logs);
+renderLogs(data.recentApps);
+renderChart(data.recentApps);
 
 }catch(err){
+
 console.error(err);
-}
 
 }
 
-function renderLogs(logs){
+}
+
+
+function renderLogs(apps){
 
 const container = document.getElementById("logList");
 
-if(!logs || logs.length===0){
-container.innerHTML="No activity yet";
+if(!apps || apps.length===0){
+
+container.innerHTML="No data yet";
 return;
+
 }
 
-container.innerHTML = logs.map(l=>{
+container.innerHTML = apps.map(a=>`
 
-let cls="safe";
-
-if(l.risk==="HIGH") cls="danger";
-if(l.risk==="MEDIUM") cls="warning";
-
-return `
 <div class="log">
-<span>${l.timestamp}</span> —
-${l.message}
-<b class="${cls}">${l.risk}</b>
-</div>
-`;
 
-}).join("");
+<b>${a.app}</b>
+
+<span style="float:right">${a.usageMinutes} min</span>
+
+</div>
+
+`).join("");
 
 }
 
-function renderChart(logs){
 
-const ctx=document.getElementById("chart");
+function renderChart(apps){
 
-const values = logs.map(l=>parseFloat(l.toxicity)*100);
+const ctx = document.getElementById("chart");
+
+const labels = apps.map(a=>a.app.split(".").pop());
+
+const values = apps.map(a=>a.usageMinutes);
 
 if(chart) chart.destroy();
 
 chart = new Chart(ctx,{
-type:"line",
+
+type:"bar",
+
 data:{
-labels:logs.map((_,i)=>"Event "+(i+1)),
+
+labels:labels,
+
 datasets:[{
-label:"Toxicity %",
+
+label:"Usage Minutes",
+
 data:values,
-borderColor:"#6366f1",
-backgroundColor:"rgba(99,102,241,0.2)",
-fill:true
+
+backgroundColor:"#6366f1"
+
 }]
+
 }
+
 });
 
 }
 
+
 loadData();
+
 setInterval(loadData,5000);
 
 </script>
