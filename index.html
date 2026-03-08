@@ -186,11 +186,10 @@ document.getElementById("riskReason").innerText =
 data.risk_reason || "No risk detected"
 
 document.getElementById("prediction").innerText =
-data.prediction || "AI prediction not available yet"
+data.prediction || "Prediction unavailable"
 
-if(data.risk_level === "HIGH"){
-document.getElementById("alertBox").style.display="block"
-}
+document.getElementById("comment").innerText =
+data.comment || "Healthy balanced usage"
 
 renderLogs(data.recentApps || [])
 
@@ -201,7 +200,8 @@ renderChart(data.recentApps || [])
 
 function renderLogs(apps){
 
-const container = document.getElementById("logList")
+const container =
+document.getElementById("logList")
 
 container.innerHTML = apps.map(a=>`
 
@@ -224,11 +224,14 @@ ${a.usageMinutes} min
 
 function renderChart(apps){
 
-const ctx = document.getElementById("chart")
+const ctx =
+document.getElementById("chart")
 
-const labels = apps.map(a=>a.app.split(".").pop())
+const labels =
+apps.map(a=>a.app.split(".").pop())
 
-const values = apps.map(a=>a.usageMinutes)
+const values =
+apps.map(a=>a.usageMinutes)
 
 if(chart) chart.destroy()
 
