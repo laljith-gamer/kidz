@@ -1,233 +1,213 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SafeKids | Production Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #6366f1;
-            --secondary: #a855f7;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --success: #10b981;
-            --bg: #0f172a;
-            --card: #1e293b;
-            --text: #f8fafc;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafeKids AI Monitoring Dashboard</title>
 
-        body {
-            font-family: 'Inter', system-ui, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-        }
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        .dashboard {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+<style>
+body{
+font-family:Arial,Helvetica,sans-serif;
+background:#0f172a;
+color:white;
+margin:0;
+padding:20px;
+}
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: var(--card);
-            border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
+.container{
+max-width:1100px;
+margin:auto;
+}
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
+header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+background:#1e293b;
+padding:20px;
+border-radius:10px;
+margin-bottom:20px;
+}
 
-        .stat-card {
-            background: var(--card);
-            padding: 20px;
-            border-radius: 16px;
-            transition: transform 0.2s;
-        }
+.cards{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+gap:20px;
+margin-bottom:20px;
+}
 
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
+.card{
+background:#1e293b;
+padding:20px;
+border-radius:10px;
+}
 
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            margin: 10px 0;
-            color: var(--primary);
-        }
+.value{
+font-size:28px;
+font-weight:bold;
+margin-top:10px;
+color:#6366f1;
+}
 
-        .streak-card {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-        }
+.logs{
+background:#1e293b;
+padding:20px;
+border-radius:10px;
+margin-top:20px;
+}
 
-        .streak-card .stat-value {
-            color: white;
-        }
+.log{
+padding:10px;
+border-bottom:1px solid #334155;
+font-size:14px;
+}
 
-        .charts-container {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 20px;
-        }
+.safe{color:#10b981;}
+.warning{color:#f59e0b;}
+.danger{color:#ef4444;}
 
-        .chart-box, .logs-box {
-            background: var(--card);
-            padding: 20px;
-            border-radius: 16px;
-        }
-
-        .log-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px;
-            border-bottom: 1px solid #334155;
-            font-size: 0.9rem;
-        }
-
-        .status-safe { color: var(--success); }
-        .status-warning { color: var(--warning); }
-        .status-danger { color: var(--danger); }
-
-        .badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-    </style>
+</style>
 </head>
+
 <body>
-    <div class="dashboard">
-        <header>
-            <div>
-                <h1 style="margin:0"><i class="fas fa-shield-child"></i> SafeKids Monitor</h1>
-                <p style="color: #94a3b8; margin: 5px 0 0">Real-time Safety & Screen Time Analytics</p>
-            </div>
-            <div id="live-indicator">
-                <span class="badge" style="background: var(--success)">Live</span>
-            </div>
-        </header>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="label">Total Screen Time</div>
-                <div class="stat-value" id="total-time">0h 0m</div>
-                <div class="trend" id="time-trend">Within limits</div>
-            </div>
-            <div class="stat-card streak-card">
-                <div class="label">Healthy Habit Streak</div>
-                <div class="stat-value" id="streak-count">0 Days</div>
-                <div class="trend">Keep it up! 🚀</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Content Safety Score</div>
-                <div class="stat-value" id="safety-score">--</div>
-                <div id="safety-status" class="badge">Monitoring</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">AI Model Accuracy</div>
-                <div class="stat-value" id="model-accuracy">99.2%</div>
-                <div class="trend">Rekognition Active</div>
-            </div>
-        </div>
+<div class="container">
 
-        <div class="charts-container">
-            <div class="chart-box">
-                <h3><i class="fas fa-chart-line"></i> Daily Usage Pattern</h3>
-                <canvas id="usageChart"></canvas>
-            </div>
-            <div class="logs-box">
-                <h3><i class="fas fa-list-ul"></i> Security Logs</h3>
-                <div id="logs-container">
-                    <div class="log-item">No active logs</div>
-                </div>
-            </div>
-        </div>
-    </div>
+<header>
+<div>
+<h2>🛡 SafeKids AI Monitor</h2>
+<p style="color:#94a3b8">Real-time AI Safety Monitoring</p>
+</div>
 
-    <script>
-        const API_ENDPOINT = 'https://stxg1iqkpc.execute-api.us-east-1.amazonaws.com/events'; // Placeholder for API Gateway
-        let usageChart;
+<div id="status">LIVE</div>
+</header>
 
-        async function fetchData() {
-            try {
-                // In production, this would fetch from DynamoDB via API Gateway
-                // For now, simulating real-time Kinesis stream updates
-                            // Fetch real data from DynamoDB via API Gateway
-            const response = await fetch(API_ENDPOINT.replace('/events', '/data'));
-            const data = await response.json();
-                updateDashboard(data);
-            } catch (err) {
-                console.error('Fetch error:', err);
-            }
-        }
+<div class="cards">
 
-        function updateDashboard(data) {
-            document.getElementById('total-time').innerText = data.total_time;
-            document.getElementById('safety-score').innerText = data.safety_score + '%';
-            document.getElementById('streak-count').innerText = data.streak + ' Days';
-            
-            const statusBadge = document.getElementById('safety-status');
-            statusBadge.innerText = data.ml_status;
-            statusBadge.style.background = data.ml_status === 'Safe' ? 'var(--success)' : 'var(--danger)';
+<div class="card">
+<div>Total Events</div>
+<div class="value" id="events">0</div>
+</div>
 
-            updateLogs(data.recent_logs);
-            updateChart(data.usage_history);
-        }
+<div class="card">
+<div>Safety Score</div>
+<div class="value" id="safety">--</div>
+</div>
 
-        function updateLogs(logs) {
-            const container = document.getElementById('logs-container');
-            container.innerHTML = logs.map(log => `
-                <div class="log-item">
-                    <span><b>${log.timestamp}</b> - ${log.app}</span>
-                    <span class="status-${log.status.toLowerCase()}">${log.status}</span>
-                </div>
-            `).join('');
-        }
+<div class="card">
+<div>Alerts</div>
+<div class="value" id="alerts">0</div>
+</div>
 
-        function updateChart(history) {
-            const ctx = document.getElementById('usageChart').getContext('2d');
-            if (usageChart) usageChart.destroy();
-            
-            usageChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                    datasets: [{
-                        label: 'Minutes used',
-                        data: history,
-                        borderColor: '#6366f1',
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
-                        x: { ticks: { color: '#94a3b8' } }
-                    }
-                }
-            });
-        }
+<div class="card">
+<div>Last Updated</div>
+<div class="value" id="updated">--</div>
+</div>
 
-        
-        fetchData();
-        setInterval(fetchData, 5000);
-    </script>
+</div>
+
+<canvas id="chart"></canvas>
+
+<div class="logs">
+<h3>AI Security Logs</h3>
+<div id="logList">Loading...</div>
+</div>
+
+</div>
+
+<script>
+
+const API_URL =
+"https://ozct5tcexuytwcxr7g34yb75ru0juafl.lambda-url.us-east-1.on.aws/";
+
+let chart;
+
+async function loadData(){
+
+try{
+
+const res = await fetch(API_URL);
+const data = await res.json();
+
+document.getElementById("events").innerText =
+data.total_events;
+
+document.getElementById("alerts").innerText =
+data.alerts;
+
+document.getElementById("updated").innerText =
+new Date(data.lastUpdated).toLocaleTimeString();
+
+document.getElementById("safety").innerText =
+Math.round(data.safety_score)+"%";
+
+renderLogs(data.recent_logs);
+renderChart(data.recent_logs);
+
+}catch(err){
+console.error(err);
+}
+
+}
+
+function renderLogs(logs){
+
+const container = document.getElementById("logList");
+
+if(!logs || logs.length===0){
+container.innerHTML="No activity yet";
+return;
+}
+
+container.innerHTML = logs.map(l=>{
+
+let cls="safe";
+
+if(l.risk==="HIGH") cls="danger";
+if(l.risk==="MEDIUM") cls="warning";
+
+return `
+<div class="log">
+<span>${l.timestamp}</span> —
+${l.message}
+<b class="${cls}">${l.risk}</b>
+</div>
+`;
+
+}).join("");
+
+}
+
+function renderChart(logs){
+
+const ctx=document.getElementById("chart");
+
+const values = logs.map(l=>parseFloat(l.toxicity)*100);
+
+if(chart) chart.destroy();
+
+chart = new Chart(ctx,{
+type:"line",
+data:{
+labels:logs.map((_,i)=>"Event "+(i+1)),
+datasets:[{
+label:"Toxicity %",
+data:values,
+borderColor:"#6366f1",
+backgroundColor:"rgba(99,102,241,0.2)",
+fill:true
+}]
+}
+});
+
+}
+
+loadData();
+setInterval(loadData,5000);
+
+</script>
+
 </body>
 </html>
